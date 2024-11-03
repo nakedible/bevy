@@ -831,8 +831,18 @@ pub struct EntityWorldMut<'w> {
     location: EntityLocation,
 }
 
+macro_rules! return_if_invalid {
+    ($self:expr, $ret:expr) => {
+        if $self.location.archetype_id == ArchetypeId::INVALID {
+            #[allow(clippy::unnecessary_literal_unwrap)]
+            return ($ret);
+        }
+    };
+}
+
 impl<'w> EntityWorldMut<'w> {
     fn as_unsafe_entity_cell_readonly(&self) -> UnsafeEntityCell<'_> {
+        // FIXME
         UnsafeEntityCell::new(
             self.world.as_unsafe_world_cell_readonly(),
             self.entity,
@@ -840,6 +850,7 @@ impl<'w> EntityWorldMut<'w> {
         )
     }
     fn as_unsafe_entity_cell(&mut self) -> UnsafeEntityCell<'_> {
+        // FIXME
         UnsafeEntityCell::new(
             self.world.as_unsafe_world_cell(),
             self.entity,
@@ -847,6 +858,7 @@ impl<'w> EntityWorldMut<'w> {
         )
     }
     fn into_unsafe_entity_cell(self) -> UnsafeEntityCell<'w> {
+        // FIXME
         UnsafeEntityCell::new(
             self.world.as_unsafe_world_cell(),
             self.entity,
@@ -892,6 +904,7 @@ impl<'w> EntityWorldMut<'w> {
     /// Returns the archetype that the current entity belongs to.
     #[inline]
     pub fn archetype(&self) -> &Archetype {
+        return_if_invalid!(self, None.expect("no archetype for despawned entity"));
         &self.world.archetypes[self.location.archetype_id]
     }
 
@@ -917,6 +930,7 @@ impl<'w> EntityWorldMut<'w> {
     ///     [`Self::contains_type_id`].
     #[inline]
     pub fn contains_id(&self, component_id: ComponentId) -> bool {
+        return_if_invalid!(self, false);
         self.as_unsafe_entity_cell_readonly()
             .contains_id(component_id)
     }
@@ -930,6 +944,7 @@ impl<'w> EntityWorldMut<'w> {
     /// - If you have a [`ComponentId`] instead of a [`TypeId`], consider using [`Self::contains_id`].
     #[inline]
     pub fn contains_type_id(&self, type_id: TypeId) -> bool {
+        return_if_invalid!(self, false);
         self.as_unsafe_entity_cell_readonly()
             .contains_type_id(type_id)
     }
@@ -938,6 +953,7 @@ impl<'w> EntityWorldMut<'w> {
     /// Returns `None` if the entity does not have a component of type `T`.
     #[inline]
     pub fn get<T: Component>(&self) -> Option<&'_ T> {
+        return_if_invalid!(self, None);
         EntityRef::from(self).get()
     }
 
@@ -948,6 +964,7 @@ impl<'w> EntityWorldMut<'w> {
     /// If the entity does not have the components required by the query `Q`.
     #[inline]
     pub fn components<Q: ReadOnlyQueryData>(&self) -> Q::Item<'_> {
+        return_if_invalid!(self, None.expect(QUERY_MISMATCH_ERROR));
         EntityRef::from(self).components::<Q>()
     }
 
@@ -955,6 +972,7 @@ impl<'w> EntityWorldMut<'w> {
     /// or `None` if the entity does not have the components required by the query `Q`.
     #[inline]
     pub fn get_components<Q: ReadOnlyQueryData>(&self) -> Option<Q::Item<'_>> {
+        return_if_invalid!(self, None);
         EntityRef::from(self).get_components::<Q>()
     }
 
@@ -963,6 +981,7 @@ impl<'w> EntityWorldMut<'w> {
     /// Returns `None` if the entity does not have a component of type `T`.
     #[inline]
     pub fn into_borrow<T: Component>(self) -> Option<&'w T> {
+        return_if_invalid!(self, None);
         // SAFETY: consuming `self` implies exclusive access
         unsafe { self.into_unsafe_entity_cell().get() }
     }
@@ -973,6 +992,7 @@ impl<'w> EntityWorldMut<'w> {
     /// Returns `None` if the entity does not have a component of type `T`.
     #[inline]
     pub fn get_ref<T: Component>(&self) -> Option<Ref<'_, T>> {
+        return_if_invalid!(self, None);
         EntityRef::from(self).get_ref()
     }
 
@@ -983,6 +1003,7 @@ impl<'w> EntityWorldMut<'w> {
     /// Returns `None` if the entity does not have a component of type `T`.
     #[inline]
     pub fn into_ref<T: Component>(self) -> Option<Ref<'w, T>> {
+        return_if_invalid!(self, None);
         EntityRef::from(self).get_ref()
     }
 
@@ -990,6 +1011,7 @@ impl<'w> EntityWorldMut<'w> {
     /// Returns `None` if the entity does not have a component of type `T`.
     #[inline]
     pub fn get_mut<T: Component>(&mut self) -> Option<Mut<'_, T>> {
+        return_if_invalid!(self, None);
         // SAFETY: &mut self implies exclusive access for duration of returned value
         unsafe { self.as_unsafe_entity_cell().get_mut() }
     }
@@ -999,6 +1021,7 @@ impl<'w> EntityWorldMut<'w> {
     /// Returns `None` if the entity does not have a component of type `T`.
     #[inline]
     pub fn into_mut<T: Component>(self) -> Option<Mut<'w, T>> {
+        return_if_invalid!(self, None);
         // SAFETY: consuming `self` implies exclusive access
         unsafe { self.into_unsafe_entity_cell().get_mut() }
     }
@@ -1007,6 +1030,7 @@ impl<'w> EntityWorldMut<'w> {
     /// detection in custom runtimes.
     #[inline]
     pub fn get_change_ticks<T: Component>(&self) -> Option<ComponentTicks> {
+        return_if_invalid!(self, None);
         EntityRef::from(self).get_change_ticks::<T>()
     }
 
@@ -1018,6 +1042,7 @@ impl<'w> EntityWorldMut<'w> {
     /// compile time.**
     #[inline]
     pub fn get_change_ticks_by_id(&self, component_id: ComponentId) -> Option<ComponentTicks> {
+        return_if_invalid!(self, None);
         EntityRef::from(self).get_change_ticks_by_id(component_id)
     }
 
@@ -1045,6 +1070,7 @@ impl<'w> EntityWorldMut<'w> {
         &self,
         component_ids: F,
     ) -> Result<F::Ref<'_>, EntityComponentError> {
+        return_if_invalid!(self, Err(EntityComponentError::MissingComponent(ComponentId::new(0)))); // FIXME
         EntityRef::from(self).get_by_id(component_ids)
     }
 
@@ -1073,6 +1099,7 @@ impl<'w> EntityWorldMut<'w> {
         self,
         component_ids: F,
     ) -> Result<F::Ref<'w>, EntityComponentError> {
+        return_if_invalid!(self, Err(EntityComponentError::MissingComponent(ComponentId::new(0)))); // FIXME
         // SAFETY:
         // - We have read-only access to all components of this entity.
         // - consuming `self` ensures that no references exist to this entity's components.
@@ -1105,6 +1132,7 @@ impl<'w> EntityWorldMut<'w> {
         &mut self,
         component_ids: F,
     ) -> Result<F::Mut<'_>, EntityComponentError> {
+        return_if_invalid!(self, Err(EntityComponentError::MissingComponent(ComponentId::new(0)))); // FIXME
         // SAFETY:
         // - `&mut self` ensures that no references exist to this entity's components.
         // - We have exclusive access to all components of this entity.
@@ -1138,6 +1166,7 @@ impl<'w> EntityWorldMut<'w> {
         self,
         component_ids: F,
     ) -> Result<F::Mut<'w>, EntityComponentError> {
+        return_if_invalid!(self, Err(EntityComponentError::MissingComponent(ComponentId::new(0)))); // FIXME
         // SAFETY:
         // - consuming `self` ensures that no references exist to this entity's components.
         // - We have exclusive access to all components of this entity.
@@ -1180,6 +1209,7 @@ impl<'w> EntityWorldMut<'w> {
         mode: InsertMode,
         #[cfg(feature = "track_change_detection")] caller: &'static core::panic::Location,
     ) -> &mut Self {
+        return_if_invalid!(self, self);
         let change_tick = self.world.change_tick();
         let mut bundle_inserter =
             BundleInserter::new::<T>(self.world, self.location.archetype_id, change_tick);
@@ -1209,6 +1239,7 @@ impl<'w> EntityWorldMut<'w> {
         component_id: ComponentId,
         component: OwningPtr<'_>,
     ) -> &mut Self {
+        return_if_invalid!(self, self);
         let change_tick = self.world.change_tick();
         let bundle_id = self
             .world
@@ -1253,6 +1284,7 @@ impl<'w> EntityWorldMut<'w> {
         component_ids: &[ComponentId],
         iter_components: I,
     ) -> &mut Self {
+        return_if_invalid!(self, self);
         let change_tick = self.world.change_tick();
         let bundle_id = self
             .world
@@ -1287,6 +1319,7 @@ impl<'w> EntityWorldMut<'w> {
     // TODO: BundleRemover?
     #[must_use]
     pub fn take<T: Bundle>(&mut self) -> Option<T> {
+        return_if_invalid!(self, None);
         let world = &mut self.world;
         let storages = &mut world.storages;
         let components = &mut world.components;
@@ -1556,6 +1589,7 @@ impl<'w> EntityWorldMut<'w> {
     /// See [`EntityCommands::remove`](crate::system::EntityCommands::remove) for more details.
     // TODO: BundleRemover?
     pub fn remove<T: Bundle>(&mut self) -> &mut Self {
+        return_if_invalid!(self, self);
         let storages = &mut self.world.storages;
         let components = &mut self.world.components;
         let bundle_info = self.world.bundles.register_info::<T>(components, storages);
@@ -1569,6 +1603,7 @@ impl<'w> EntityWorldMut<'w> {
 
     /// Removes all components in the [`Bundle`] and remove all required components for each component in the bundle
     pub fn remove_with_requires<T: Bundle>(&mut self) -> &mut Self {
+        return_if_invalid!(self, self);
         let storages = &mut self.world.storages;
         let components = &mut self.world.components;
         let bundles = &mut self.world.bundles;
@@ -1586,6 +1621,7 @@ impl<'w> EntityWorldMut<'w> {
     ///
     /// See [`EntityCommands::retain`](crate::system::EntityCommands::retain) for more details.
     pub fn retain<T: Bundle>(&mut self) -> &mut Self {
+        return_if_invalid!(self, self);
         let archetypes = &mut self.world.archetypes;
         let storages = &mut self.world.storages;
         let components = &mut self.world.components;
@@ -1618,6 +1654,7 @@ impl<'w> EntityWorldMut<'w> {
     ///
     /// Panics if the provided [`ComponentId`] does not exist in the [`World`].
     pub fn remove_by_id(&mut self, component_id: ComponentId) -> &mut Self {
+        return_if_invalid!(self, self);
         let components = &mut self.world.components;
 
         let bundle_id = self
@@ -1634,6 +1671,7 @@ impl<'w> EntityWorldMut<'w> {
 
     /// Removes all components associated with the entity.
     pub fn clear(&mut self) -> &mut Self {
+        return_if_invalid!(self, self);
         let component_ids: Vec<ComponentId> = self.archetype().components().collect();
         let components = &mut self.world.components;
 
@@ -1653,6 +1691,7 @@ impl<'w> EntityWorldMut<'w> {
     ///
     /// See [`World::despawn`] for more details.
     pub fn despawn(self) {
+        return_if_invalid!(self, ());
         let world = self.world;
         let archetype = &world.archetypes[self.location.archetype_id];
 
@@ -1866,6 +1905,7 @@ impl<'w> EntityWorldMut<'w> {
 
     /// Triggers the given `event` for this entity, which will run any observers watching for it.
     pub fn trigger(&mut self, event: impl Event) -> &mut Self {
+        return_if_invalid!(self, self); // FIXME: is doing nothing correct behaviour?
         self.world.trigger_targets(event, self.entity);
         self.world.flush();
         self.update_location();
@@ -1878,6 +1918,7 @@ impl<'w> EntityWorldMut<'w> {
         &mut self,
         observer: impl IntoObserverSystem<E, B, M>,
     ) -> &mut Self {
+        return_if_invalid!(self, self); // FIXME: is doing nothing correct behaviour?
         self.world
             .spawn(Observer::new(observer).with_entity(self.entity));
         self.world.flush();
