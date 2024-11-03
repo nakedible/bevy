@@ -1188,6 +1188,8 @@ impl<'w> EntityWorldMut<'w> {
             unsafe {
                 bundle_inserter.insert(self.entity, self.location, bundle, mode, #[cfg(feature = "track_change_detection")] caller)
             };
+        self.world.flush();
+        self.update_location();
         self
     }
 
@@ -1228,6 +1230,8 @@ impl<'w> EntityWorldMut<'w> {
             Some(component).into_iter(),
             Some(storage_type).iter().cloned(),
         );
+        self.world.flush();
+        self.update_location();
         self
     }
 
@@ -1271,6 +1275,8 @@ impl<'w> EntityWorldMut<'w> {
             (*storage_types).iter().cloned(),
         );
         *self.world.bundles.get_storages_unchecked(bundle_id) = core::mem::take(&mut storage_types);
+        self.world.flush();
+        self.update_location();
         self
     }
 
@@ -1369,6 +1375,8 @@ impl<'w> EntityWorldMut<'w> {
                 new_archetype_id,
             );
         }
+        self.world.flush();
+        self.update_location();
         Some(result)
     }
 
@@ -1554,7 +1562,8 @@ impl<'w> EntityWorldMut<'w> {
 
         // SAFETY: the `BundleInfo` is initialized above
         self.location = unsafe { self.remove_bundle(bundle_info) };
-
+        self.world.flush();
+        self.update_location();
         self
     }
 
@@ -1568,7 +1577,8 @@ impl<'w> EntityWorldMut<'w> {
 
         // SAFETY: the dynamic `BundleInfo` is initialized above
         self.location = unsafe { self.remove_bundle(bundle_id) };
-
+        self.world.flush();
+        self.update_location();
         self
     }
 
@@ -1595,6 +1605,8 @@ impl<'w> EntityWorldMut<'w> {
 
         // SAFETY: the `BundleInfo` for the components to remove is initialized above
         self.location = unsafe { self.remove_bundle(remove_bundle) };
+        self.world.flush();
+        self.update_location();
         self
     }
 
@@ -1615,7 +1627,8 @@ impl<'w> EntityWorldMut<'w> {
 
         // SAFETY: the `BundleInfo` for this `component_id` is initialized above
         self.location = unsafe { self.remove_bundle(bundle_id) };
-
+        self.world.flush();
+        self.update_location();
         self
     }
 
@@ -1631,7 +1644,8 @@ impl<'w> EntityWorldMut<'w> {
 
         // SAFETY: the `BundleInfo` for this `component_id` is initialized above
         self.location = unsafe { self.remove_bundle(bundle_id) };
-
+        self.world.flush();
+        self.update_location();
         self
     }
 
@@ -1853,6 +1867,8 @@ impl<'w> EntityWorldMut<'w> {
     /// Triggers the given `event` for this entity, which will run any observers watching for it.
     pub fn trigger(&mut self, event: impl Event) -> &mut Self {
         self.world.trigger_targets(event, self.entity);
+        self.world.flush();
+        self.update_location();
         self
     }
 
@@ -1864,6 +1880,8 @@ impl<'w> EntityWorldMut<'w> {
     ) -> &mut Self {
         self.world
             .spawn(Observer::new(observer).with_entity(self.entity));
+        self.world.flush();
+        self.update_location();
         self
     }
 }
