@@ -415,15 +415,8 @@ impl<D: QueryData, F: QueryFilter> QueryState<D, F> {
     #[inline]
     #[track_caller]
     pub fn validate_world(&self, world_id: WorldId) {
-        #[inline(never)]
-        #[track_caller]
-        #[cold]
-        fn panic_mismatched(this: WorldId, other: WorldId) -> ! {
-            panic!("Encountered a mismatched World. This QueryState was created from {this:?}, but a method was called using {other:?}.");
-        }
-
         if self.world_id != world_id {
-            panic_mismatched(self.world_id, world_id);
+            panic!("Encountered a mismatched World. This QueryState was created from {:?}, but a method was called using {:?}.", self.world_id, world_id);
         }
     }
 

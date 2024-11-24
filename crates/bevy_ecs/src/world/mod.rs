@@ -699,16 +699,9 @@ impl World {
     #[inline]
     #[track_caller]
     pub fn entity<F: WorldEntityFetch>(&self, entities: F) -> F::Ref<'_> {
-        #[inline(never)]
-        #[cold]
-        #[track_caller]
-        fn panic_no_entity(entity: Entity) -> ! {
-            panic!("Entity {entity:?} does not exist");
-        }
-
         match self.get_entity(entities) {
             Ok(fetched) => fetched,
-            Err(entity) => panic_no_entity(entity),
+            Err(entity) => panic!("Entity {entity:?} does not exist"),
         }
     }
 
@@ -830,16 +823,9 @@ impl World {
     #[inline]
     #[track_caller]
     pub fn entity_mut<F: WorldEntityFetch>(&mut self, entities: F) -> F::Mut<'_> {
-        #[inline(never)]
-        #[cold]
-        #[track_caller]
-        fn panic_on_err(e: EntityFetchError) -> ! {
-            panic!("{e}");
-        }
-
         match self.get_entity_mut(entities) {
             Ok(fetched) => fetched,
-            Err(e) => panic_on_err(e),
+            Err(e) => panic!("{e}"),
         }
     }
 
